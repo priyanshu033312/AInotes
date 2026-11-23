@@ -126,7 +126,7 @@ export interface DocumentRecord {
   createdAt: string;
   processedAt?: string;
   isSample?: boolean;
-  textPreview: string;
+  text: string;
   study?: StudyMaterial;
   presentation?: PresentationRecord;
 }

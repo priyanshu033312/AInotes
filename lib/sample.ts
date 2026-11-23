@@ -842,7 +842,7 @@ export function buildSampleDocument(): DocumentRecord {
     createdAt: daysAgo(2),
     processedAt: daysAgo(2),
     isSample: true,
-    textPreview: heatExchangerText,
+    text: heatExchangerText,
     study,
   };
 }
@@ -862,7 +862,7 @@ export function buildSecondSampleDocument(): DocumentRecord {
     createdAt: daysAgo(6),
     processedAt: daysAgo(6),
     isSample: true,
-    textPreview: secondLawText,
+    text: secondLawText,
     study,
   };
 }

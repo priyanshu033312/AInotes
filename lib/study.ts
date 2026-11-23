@@ -137,17 +137,19 @@ function normalizeDiagram(raw: unknown, fallbackTitle: string): DiagramSpec | un
   const rawNodes = Array.isArray(source.nodes) ? source.nodes : [];
   const nodes: DiagramNode[] = rawNodes
     .slice(0, 12)
-    .map((node, index) => {
+    .map((node, index): DiagramNode | null => {
       const item = (node ?? {}) as Record<string, unknown>;
       const label = asString(item.label) || asString(item.title);
       if (!label) return null;
-      return {
+      const mapped: DiagramNode = {
         id: asString(item.id, `n${index + 1}`),
         label: truncate(label, 60),
-        note: asString(item.note) || undefined,
-      } satisfies DiagramNode;
+      };
+      const note = asString(item.note);
+      if (note) mapped.note = note;
+      return mapped;
     })
-    .filter((node): node is DiagramNode => Boolean(node));
+    .filter((node): node is DiagramNode => node !== null);
 
   if (nodes.length < 2) return undefined;
   const ids = new Set(nodes.map((node) => node.id));
@@ -334,12 +336,12 @@ export async function generateStudyMaterial(
 ): Promise<GenerationResult> {
   const status = aiStatus();
   if (!status.configured) {
-    return { study: buildLocalStudyMaterial(doc.name, doc.textPreview) };
+    return { study: buildLocalStudyMaterial(doc.name, doc.text) };
   }
 
   try {
     await onStage?.("organizing");
-    const chunks = chunkText(doc.textPreview, 26_000);
+    const chunks = chunkText(doc.text, 26_000);
     let digest = "";
 
     if (chunks.length > 1) {
@@ -364,7 +366,7 @@ export async function generateStudyMaterial(
     await onStage?.("simplifying");
     const sourceBlock = digest
       ? `CONDENSED SECTION DIGEST (built from the full document):\n${digest}`
-      : `SOURCE DOCUMENT TEXT:\n${doc.textPreview}`;
+      : `SOURCE DOCUMENT TEXT:\n${doc.text}`;
 
     const raw = await aiJson<unknown>({
       system: SYSTEM_PROMPT,
@@ -386,7 +388,7 @@ Write for an undergraduate preparing for examinations. Keep the document's own c
   } catch (error) {
     const message = (error as Error).message;
     console.error("[notewise] AI generation failed:", message);
-    const local = buildLocalStudyMaterial(doc.name, doc.textPreview);
+    const local = buildLocalStudyMaterial(doc.name, doc.text);
     return {
       aiError: message,
       study: {
@@ -456,7 +458,7 @@ You are now in chat mode. Answer the student's question using ONLY the supplied 
       user: `DOCUMENT: ${doc.name}
 ${conversation ? `PREVIOUS CONVERSATION:\n${conversation}\n` : ""}
 DOCUMENT EXCERPT:
-${relevantExcerpt(doc.textPreview, question)}
+${relevantExcerpt(doc.text, question)}
 
 STUDENT QUESTION: ${question}`,
     });
@@ -464,7 +466,7 @@ STUDENT QUESTION: ${question}`,
   }
 
   // Local mode: return the closest sentences from the source, clearly labelled.
-  const sentences = doc.textPreview
+  const sentences = doc.text
     .replace(/\s+/g, " ")
     .split(/(?<=[.!?])\s+/)
     .map((sentence) => sentence.trim())
@@ -523,7 +525,7 @@ DOCUMENT: ${doc.name}
 CONCEPT: ${conceptTitle}
 
 DOCUMENT EXCERPT:
-${relevantExcerpt(doc.textPreview, conceptTitle, 7000)}
+${relevantExcerpt(doc.text, conceptTitle, 7000)}
 
 Return JSON: {"title":string,"simpleExplanation":string,"steps":string[],"example":string,"analogy":string,"sourceNote":string,"diagram":{"type":"flow"|"mindmap"|"compare"|"block","title":string,"caption":string,"nodes":[{"id":string,"label":string,"note":string}],"edges":[{"from":string,"to":string,"label":string}],"columns":[string,string]}}`,
   });
