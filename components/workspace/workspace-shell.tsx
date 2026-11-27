@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -24,6 +24,7 @@ import {
   VisualView,
 } from "@/components/workspace/study-views";
 import { DeleteDocumentButton } from "@/components/delete-document-button";
+import { ReprocessButton } from "@/components/reprocess-button";
 import type { StudyMaterial, StudyTab } from "@/lib/types";
 import { cn, formatBytes, truncate } from "@/lib/utils";
 
@@ -66,6 +67,12 @@ export function WorkspaceShell({
   const [study, setStudy] = useState(initialStudy);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const { push } = useToast();
+
+  // A rebuild or a server refresh sends fresh notes down as a new prop; keep
+  // the local copy in sync so the workspace shows them without a full reload.
+  useEffect(() => {
+    setStudy(initialStudy);
+  }, [initialStudy]);
 
   const counts: Record<StudyTab, number | undefined> = {
     notes: study.chapters.length,
@@ -154,6 +161,7 @@ export function WorkspaceShell({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
+              <ReprocessButton id={id} />
               <a
                 href={`/api/export/${id}`}
                 className={buttonClass("outline", "sm")}

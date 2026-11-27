@@ -47,14 +47,31 @@ export interface DiagramSpec {
   columns?: [string, string];
 }
 
+export interface Derivation {
+  title: string;
+  steps: string[];
+  result: string;
+}
+
+export interface WorkedExample {
+  question: string;
+  solution: string;
+}
+
 export interface StudyChapter {
   id: string;
   title: string;
   summary: string;
+  /** Long-form, textbook-style explanation of the whole chapter. */
+  explanation?: string;
   keyPoints: string[];
   definitions: Definition[];
   formulas: Formula[];
   examples: string[];
+  derivations?: Derivation[];
+  workedExamples?: WorkedExample[];
+  commonMistakes?: string[];
+  examTips?: string[];
   source?: string;
 }
 

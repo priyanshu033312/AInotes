@@ -5,9 +5,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
   BookOpen,
+  Calculator,
   ChevronDown,
   Copy as CopyIcon,
   FileSearch,
+  GitBranch,
   Lightbulb,
   ListChecks,
   Loader2,
@@ -102,10 +104,20 @@ function ChapterCard({
   const copyText = [
     chapter.title,
     chapter.summary,
+    chapter.explanation ?? "",
     "",
     ...chapter.keyPoints.map((point) => `• ${point}`),
     ...chapter.definitions.map((definition) => `${definition.term}: ${definition.definition}`),
     ...chapter.formulas.map((formula) => `${formula.expression} — ${formula.meaning}`),
+    ...(chapter.derivations ?? []).flatMap((derivation) => [
+      `Derivation: ${derivation.title}`,
+      ...derivation.steps.map((step, index) => `${index + 1}. ${step}`),
+      derivation.result,
+    ]),
+    ...(chapter.workedExamples ?? []).flatMap((example) => [
+      `Solved example: ${example.question}`,
+      example.solution,
+    ]),
   ].join("\n");
 
   return (
@@ -151,6 +163,23 @@ function ChapterCard({
                 <p className="text-[12.5px] leading-relaxed text-muted">{chapter.summary}</p>
                 <CopyButton text={copyText} label="Copy section" className="shrink-0" />
               </div>
+
+              {chapter.explanation ? (
+                <div className="mt-3 space-y-2 border-l-2 border-accent/25 pl-3">
+                  {chapter.explanation
+                    .split(/\n{2,}/)
+                    .map((paragraph) => paragraph.trim())
+                    .filter(Boolean)
+                    .map((paragraph, index) => (
+                      <p
+                        key={index}
+                        className="text-[12.5px] leading-relaxed text-muted"
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                </div>
+              ) : null}
 
               {chapter.keyPoints.length > 0 ? (
                 <ul className="mt-3 space-y-1.5">
@@ -205,9 +234,66 @@ function ChapterCard({
                 </div>
               ) : null}
 
+              {chapter.derivations && chapter.derivations.length > 0 ? (
+                <div className="mt-4">
+                  <SectionTitle icon={GitBranch} title="Derivations" hint="where each formula comes from" />
+                  <div className="mt-2 space-y-2">
+                    {chapter.derivations.map((derivation) => (
+                      <div
+                        key={derivation.title}
+                        className="rounded-lg border border-accent/20 bg-accent/[0.05] px-3 py-2.5"
+                      >
+                        <p className="text-[11.5px] font-semibold text-ink">
+                          {derivation.title}
+                        </p>
+                        <ol className="mt-1.5 space-y-1">
+                          {derivation.steps.map((step, stepIndex) => (
+                            <li
+                              key={stepIndex}
+                              className="flex gap-2 text-[11.5px] leading-relaxed text-muted"
+                            >
+                              <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded bg-accent/15 font-mono text-[9px] text-accent-2">
+                                {stepIndex + 1}
+                              </span>
+                              {step}
+                            </li>
+                          ))}
+                        </ol>
+                        {derivation.result ? (
+                          <p className="mt-2 rounded-md bg-white/[0.04] px-2 py-1 font-mono text-[11.5px] text-ink">
+                            {derivation.result}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {chapter.workedExamples && chapter.workedExamples.length > 0 ? (
+                <div className="mt-4">
+                  <SectionTitle icon={Calculator} title="Solved examples" />
+                  <div className="mt-2 space-y-2">
+                    {chapter.workedExamples.map((example, exampleIndex) => (
+                      <div
+                        key={`${example.question}-${exampleIndex}`}
+                        className="rounded-lg border border-line/50 bg-base-soft/50 px-3 py-2.5"
+                      >
+                        <p className="text-[11.5px] font-semibold leading-relaxed text-ink">
+                          Q{exampleIndex + 1}. {example.question}
+                        </p>
+                        <p className="mt-1 whitespace-pre-line text-[11.5px] leading-relaxed text-muted">
+                          {example.solution}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {chapter.examples.length > 0 ? (
                 <div className="mt-4">
-                  <SectionTitle icon={Lightbulb} title="Examples" />
+                  <SectionTitle icon={Lightbulb} title="Examples in context" />
                   <ul className="mt-2 space-y-1.5">
                     {chapter.examples.map((example) => (
                       <li
@@ -215,6 +301,37 @@ function ChapterCard({
                         className="rounded-lg border border-line/50 bg-base-soft/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted"
                       >
                         {example}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {chapter.commonMistakes && chapter.commonMistakes.length > 0 ? (
+                <div className="mt-4">
+                  <SectionTitle icon={AlertTriangle} title="Common mistakes" />
+                  <ul className="mt-2 space-y-1.5">
+                    {chapter.commonMistakes.map((mistake) => (
+                      <li
+                        key={mistake}
+                        className="flex gap-2 rounded-lg border border-warn/20 bg-warn/[0.05] px-3 py-2 text-[11.5px] leading-relaxed text-muted"
+                      >
+                        <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-warn" />
+                        {mistake}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {chapter.examTips && chapter.examTips.length > 0 ? (
+                <div className="mt-4">
+                  <SectionTitle icon={Target} title="Exam tips" />
+                  <ul className="mt-2 space-y-1.5">
+                    {chapter.examTips.map((tip) => (
+                      <li key={tip} className="flex gap-2 text-[11.5px] leading-relaxed text-muted">
+                        <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-cyan" />
+                        {tip}
                       </li>
                     ))}
                   </ul>
@@ -263,7 +380,7 @@ export function NotesView({
 
       <div className="flex items-center justify-between">
         <h2 className="font-display text-[15px] font-semibold text-ink">
-          Simplified notes
+          Chapter notes
         </h2>
         <button
           onClick={() =>

@@ -154,6 +154,12 @@ function buildChapters(sections: Section[], maxChapters = 6): StudyChapter[] {
       id: `ch-${index + 1}`,
       title: section.title,
       summary: truncate(sentences.slice(0, 2).join(" ") || body, 420),
+      // Local mode cannot invent explanations, so quote the fuller body text
+      // directly. It is still more to study from than the two-sentence summary.
+      explanation:
+        sentences.length > 3
+          ? truncate(sentences.slice(2, 12).join(" "), 2400)
+          : undefined,
       keyPoints: pickKeyPoints(sentences, 5),
       definitions: extractDefinitions(body),
       formulas: extractFormulas(section.lines.join("\n")),
@@ -161,6 +167,10 @@ function buildChapters(sections: Section[], maxChapters = 6): StudyChapter[] {
         .filter((sentence) => /\b(for example|e\.g\.|consider|suppose|such as)\b/i.test(sentence))
         .slice(0, 2)
         .map((sentence) => truncate(sentence, 260)),
+      derivations: [],
+      workedExamples: [],
+      commonMistakes: [],
+      examTips: [],
       source: "Locally extracted from the uploaded document",
     } satisfies StudyChapter;
   });

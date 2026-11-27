@@ -20,36 +20,64 @@ export interface AiStatus {
 
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 
+/** Trim whitespace and strip accidental wrapping quotes from an env value. */
+function envValue(name: string): string {
+  return (process.env[name] ?? "").trim().replace(/^["'`]|["'`]$/g, "").trim();
+}
+
+function positiveInt(raw: string, fallback: number): number {
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function resolveProvider(): AiProviderName {
+  const requested = envValue("AI_PROVIDER").toLowerCase();
+  const openAiKey = envValue("AI_API_KEY");
+  const geminiKey = envValue("GEMINI_API_KEY");
+
+  if (requested === "none") return "none";
+
+  // Honour the requested provider only when its key exists. Otherwise fall back
+  // to whichever key was actually filled in, so a populated GEMINI_API_KEY is
+  // never ignored just because AI_PROVIDER still says "openai".
+  if (requested === "gemini") {
+    if (geminiKey) return "gemini";
+    if (openAiKey) return "openai";
+    return "gemini";
+  }
+  if (openAiKey) return "openai";
+  if (geminiKey) return "gemini";
+  return "openai";
+}
+
 export function getAiConfig(): AiConfig {
-  const raw = (process.env.AI_PROVIDER ?? "openai").toLowerCase().trim();
-  const provider: AiProviderName =
-    raw === "none" ? "none" : raw === "gemini" ? "gemini" : "openai";
+  const provider = resolveProvider();
 
   const apiKey =
-    provider === "gemini"
-      ? (process.env.GEMINI_API_KEY ?? "").trim()
-      : (process.env.AI_API_KEY ?? "").trim();
+    provider === "gemini" ? envValue("GEMINI_API_KEY") : envValue("AI_API_KEY");
 
   const model =
-    provider === "gemini"
-      ? (process.env.GEMINI_MODEL ?? "gemini-2.0-flash").trim()
-      : (process.env.AI_MODEL ?? "gpt-4o-mini").trim();
+    (provider === "gemini" ? envValue("GEMINI_MODEL") : envValue("AI_MODEL")) ||
+    (provider === "gemini" ? "gemini-3.1-flash-lite" : "gpt-4o-mini");
 
   return {
     provider,
     apiKey,
-    baseUrl: (process.env.AI_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/+$/, ""),
+    baseUrl: (envValue("AI_BASE_URL") || DEFAULT_BASE_URL).replace(/\/+$/, ""),
     model,
-    maxInputChars: Number(process.env.AI_MAX_INPUT_CHARS ?? 48_000),
-    chatEnabled: (process.env.AI_ENABLE_CHAT ?? "true") !== "false",
+    maxInputChars: positiveInt(envValue("AI_MAX_INPUT_CHARS"), 48_000),
+    chatEnabled: envValue("AI_ENABLE_CHAT") !== "false",
   };
 }
 
 export function aiStatus(): AiStatus {
   const config = getAiConfig();
+  // Never spread the config here: the object is passed to server components and
+  // must not carry the API key, even on the server.
+  const status = { provider: config.provider, model: config.model };
   if (config.provider === "none") {
     return {
-      ...config,
+      ...status,
       configured: false,
       reason:
         "AI_PROVIDER is set to \"none\". NoteWise will use local, rule-based analysis.",
@@ -57,13 +85,13 @@ export function aiStatus(): AiStatus {
   }
   if (!config.apiKey) {
     return {
-      ...config,
+      ...status,
       configured: false,
       reason:
-        "No API key found. Add AI_API_KEY (or GEMINI_API_KEY) to .env.local and restart the server.",
+        "No API key found. Add AI_API_KEY or GEMINI_API_KEY to .env.local and restart the server.",
     };
   }
-  return { ...config, configured: true };
+  return { ...status, configured: true };
 }
 
 function extractJson<T>(raw: string): T {

@@ -20,6 +20,14 @@ interface Database {
 
 export const DEFAULT_OWNER = "local-user";
 
+/**
+ * The whole database is a single JSON file, and every page render needs a few
+ * documents from it. Re-reading and re-parsing it on each navigation is the
+ * main reason pages felt slow once documents were added, so keep the parsed
+ * result in memory and only reload when the file changed on disk.
+ */
+let cachedDb: { data: Database; mtimeMs: number; size: number } | null = null;
+
 let queue: Promise<unknown> = Promise.resolve();
 
 /** Serialise read-modify-write cycles so concurrent requests never clobber data. */
@@ -38,9 +46,14 @@ async function ensureDirs() {
 async function readDbFile(): Promise<Database> {
   await ensureDirs();
   try {
+    const stat = await fs.stat(DB_FILE);
+    if (cachedDb && cachedDb.mtimeMs === stat.mtimeMs && cachedDb.size === stat.size) {
+      return cachedDb.data;
+    }
     const raw = await fs.readFile(DB_FILE, "utf8");
     const parsed = JSON.parse(raw) as Database;
     if (!Array.isArray(parsed.documents)) throw new Error("Malformed database");
+    cachedDb = { data: parsed, mtimeMs: stat.mtimeMs, size: stat.size };
     return parsed;
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
@@ -59,8 +72,16 @@ async function readDbFile(): Promise<Database> {
 async function writeDbFile(db: Database) {
   await ensureDirs();
   const tmp = `${DB_FILE}.${process.pid}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(db, null, 2), "utf8");
-  await fs.rename(tmp, DB_FILE);
+  try {
+    await fs.writeFile(tmp, JSON.stringify(db, null, 2), "utf8");
+    await fs.rename(tmp, DB_FILE);
+    const stat = await fs.stat(DB_FILE);
+    cachedDb = { data: db, mtimeMs: stat.mtimeMs, size: stat.size };
+  } catch (error) {
+    // The in-memory copy may already hold changes that never reached disk.
+    cachedDb = null;
+    throw error;
+  }
 }
 
 export async function listDocuments(ownerId = DEFAULT_OWNER) {

@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
 
 const ENV_SAMPLE = `# .env.local — never commit this file
-AI_PROVIDER=openai          # openai | gemini | none
+AI_PROVIDER=openai          # openai | gemini | none (auto-switches to
+                            # gemini if only GEMINI_API_KEY is filled in)
 AI_API_KEY=sk-...
 AI_BASE_URL=https://api.openai.com/v1
 AI_MODEL=gpt-4o-mini
@@ -18,7 +19,7 @@ AI_MODEL=gpt-4o-mini
 # or, for Google Gemini
 # AI_PROVIDER=gemini
 # GEMINI_API_KEY=...
-# GEMINI_MODEL=gemini-2.0-flash`;
+# GEMINI_MODEL=gemini-3.1-flash-lite`;
 
 export default async function SettingsPage() {
   const status = aiStatus();
@@ -61,7 +62,7 @@ export default async function SettingsPage() {
                 ["Provider", config.provider],
                 ["Model", config.model],
                 ["Endpoint", config.provider === "gemini" ? "generativelanguage.googleapis.com" : config.baseUrl],
-                ["API key", config.apiKey ? `set (${config.apiKey.slice(0, 4)}…${config.apiKey.slice(-4)})` : "missing"],
+                ["API key", config.apiKey ? "set on server (hidden)" : "missing"],
                 ["Max input characters", String(config.maxInputChars)],
                 ["Document chat", config.chatEnabled ? "enabled" : "disabled"],
               ].map(([label, value]) => (

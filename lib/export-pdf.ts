@@ -252,6 +252,12 @@ export async function generateNotesPdf(study: StudyMaterial): Promise<Uint8Array
     writer.heading(chapter.title, 14);
     if (chapter.summary) writer.text(chapter.summary, { size: 10, gap: 6 });
 
+    if (chapter.explanation) {
+      for (const paragraph of chapter.explanation.split(/\n{2,}/)) {
+        if (paragraph.trim()) writer.text(paragraph.trim(), { size: 10, gap: 5 });
+      }
+    }
+
     if (chapter.keyPoints.length > 0) {
       writer.text("Key points", { size: 9.5, bold: true, color: COLOR.secondary, gap: 3 });
       writer.bullets(chapter.keyPoints, { size: 9.5 });
@@ -280,6 +286,38 @@ export async function generateNotesPdf(study: StudyMaterial): Promise<Uint8Array
         });
       }
     }
+
+    if (chapter.derivations && chapter.derivations.length > 0) {
+      writer.text("Derivations", { size: 9.5, bold: true, color: COLOR.secondary, gap: 3 });
+      for (const derivation of chapter.derivations) {
+        writer.text(derivation.title, { size: 9.5, bold: true, indent: 8, gap: 2 });
+        derivation.steps.forEach((step, index) => {
+          writer.text(`${index + 1}. ${step}`, { size: 9.5, indent: 16, gap: 2 });
+        });
+        if (derivation.result) {
+          writer.text(`Result: ${derivation.result}`, { size: 9.5, indent: 8, gap: 3 });
+        }
+      }
+    }
+
+    if (chapter.workedExamples && chapter.workedExamples.length > 0) {
+      writer.text("Solved examples", { size: 9.5, bold: true, color: COLOR.secondary, gap: 3 });
+      chapter.workedExamples.forEach((example, index) => {
+        writer.text(`Q${index + 1}. ${example.question}`, { size: 9.5, indent: 8, gap: 2 });
+        writer.text(example.solution, { size: 9.5, indent: 16, gap: 3 });
+      });
+    }
+
+    if (chapter.commonMistakes && chapter.commonMistakes.length > 0) {
+      writer.text("Common mistakes", { size: 9.5, bold: true, color: COLOR.secondary, gap: 3 });
+      writer.bullets(chapter.commonMistakes, { size: 9.5 });
+    }
+
+    if (chapter.examTips && chapter.examTips.length > 0) {
+      writer.text("Exam tips", { size: 9.5, bold: true, color: COLOR.secondary, gap: 3 });
+      writer.bullets(chapter.examTips, { size: 9.5 });
+    }
+
     if (chapter.source) {
       writer.text(chapter.source, { size: 8, color: COLOR.muted, gap: 2 });
     }
